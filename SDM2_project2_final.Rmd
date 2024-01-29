@@ -1,0 +1,579 @@
+---
+title: "SDM 2_Project 2"
+author: 'Mithil Gaonkar : mithilje, \ Naga Manasa Palaparthi : nagamana, \ Nitin Dharmapal
+  : nitindha, \ Vignesh Venkatakumar : vvenkata'
+date: "2023-12-05"
+output:
+  html_document: default
+  pdf_document: default
+---
+## References: "Time Series Analysis With Applications in R Second Edition by Jonathan D. Cryer, Kung-Sik Chan: Springer publications"
+
+
+### 1. Accessing the dataset \
+\
+In our initial approach to analyzing the oil prices dataset from Kaggle, we began by setting up our R environment and importing necessary packages. We loaded the oil.csv file into R, converting the date column to the appropriate Date format for time series analysis. Our initial exploration involved identifying missing values in the dataset. To do this, we calculated the sum of NA (not available) values and located their positions within the dataset. \
+\
+```{r}
+options(repos = c(CRAN = "https://cran.rstudio.com"))
+```
+
+
+```{r}
+oil_data <- read.csv('oil.csv')
+oil_data$date <- as.Date(oil_data$date)
+```
+
+```{r}
+#Finding missing data
+sum(is.na(oil_data))
+```
+```{r}
+print("Position of missing values -") 
+which(is.na(oil_data)) 
+```
+```{r}
+install.packages('TSstudio')
+```
+
+```{r}
+library(TSstudio)
+```
+```{r}
+#remove.packages("cli")
+```
+```{r}
+install.packages("cli")
+```
+
+### 2. Plotting the time series data \
+\
+Subsequently, we installed and loaded the TSstudio and ggplot2 packages, essential for our time series visualization. Our first plot of the oil data, without imputing missing values, used the ts_plot function from TSstudio. This initial plot provided us with a basic visual representation of oil prices over time, marked with 'dcoilwtico' on the y-axis, which represents the oil prices. We followed this with a simple line plot using ggplot2 for a clearer visualization. These plots were instrumental in giving us a preliminary view of the data's structure and patterns, setting the stage for more advanced analysis and data imputation.
+\
+```{r}
+ts_plot(oil_data, title = "Daily oil price", Xtitle = "Time",Ytitle = "Dcoilwtico")
+```
+```{r}
+summary(oil_data)
+```
+
+```{r}
+#win.graph(width=4.875, height=2.5,pointsize=8) 
+plot(oil_data,type='o',ylab='dcoilwtico')
+```
+```{r}
+install.packages('readr')
+install.packages('ggplot2')
+```
+
+
+```{r}
+library(readr)
+update.packages('ggplot2')
+library(ggplot2)
+```
+
+### 3. Filling the missing data \
+\
+Following the initial visualization of the oil price time series, we focused on addressing the missing data. To do this, we chose to use the na_ma function from the imputeTS package, a method that imputes missing values using a moving average. This approach was selected for its ability to smoothly fill gaps in time series data, maintaining the overall trend and pattern. After imputing the missing values, we plotted the time series again. The new plot, titled "Time Series Plot with moving average imputation," provided us with a more complete visual representation of oil prices over time. This step was crucial in preparing the dataset for more accurate and reliable analysis in the subsequent stages of our project.
+\
+```{r}
+oil_data$date <- as.Date(oil_data$date)
+
+# Plot the time series
+ts_plot(oil_data, type = "l", Xtitle = "Date", Ytitle = "dcoilwtico", title = "Time Series Plot w/o imputing missing values")
+```
+\
+This initial plot provided us with a basic visual representation of oil prices over time, marked with 'dcoilwtico' on the y-axis, which represents the oil prices. 
+```{r}
+install.packages("imputeTS")
+```
+
+### 4. Plot the time series with imputed data. Do you see a trend and/or seasonality in the data?
+After imputing missing values in the oil dataset using the moving average method with na_ma from the imputeTS package, we proceeded to analyze the data for trends and seasonality. The imputed data was first converted into a time series object using the ts function with an assumed frequency of 365, indicating daily data. This conversion was essential for applying time series analysis techniques. We then used the decompose function to break down the imputed time series into its constituent components – trend, seasonal, and irregular. This decomposition was visualized through a plot, providing a clear view of each component within the time series.
+```{r}
+library('imputeTS')
+imputed_df <- na_ma(oil_data)
+```
+```{r}
+# Plot the time series
+ts_plot(imputed_df, type = "l", Xtitle = "Date", Ytitle = "dcoilwtico", title = "Time Series Plot with moving average imputation")
+```
+
+```{r}
+imp_oil_series<-ts(imputed_df$dcoilwtico, frequency=365)
+```
+
+```{r}
+oilTScomponents <- decompose(imp_oil_series)
+plot(oilTScomponents)
+```
+\
+**Observations**
+\
+The decomposition plot revealed discernible seasonality in the oil prices time series. This seasonal pattern suggests regular fluctuations in oil prices at certain intervals throughout the year. However, the trend component was not as distinct. The plot displayed a sinusoidal nature, indicating phases of both increasing and decreasing trends, but without a clear, consistent direction over the entire time frame. This observation of seasonality, coupled with an ambiguous trend, provides critical insights for our subsequent modeling and forecasting steps. It highlights the importance of considering seasonal effects in any models we choose to apply to this dataset.
+\
+
+### 5. About the ETS models and about Holt-Winters models 
+\
+**ETS (Error, Trend, Seasonality) Models**
+
+Components: ETS models are distinguished by their explicit consideration of error, trend, and seasonality, each of which can be modeled additively or multiplicatively.
+Error: Assumes errors follow a specified distribution—commonly normal or exponential—to account for randomness in the data.
+Trend: Addresses whether the time series exhibits a consistent direction over time, which can be absent (N), linear/additive (A), or exponential/multiplicative (M).
+Seasonality: Captures regular pattern fluctuations, also characterized as none (N), additive (A), or multiplicative (M), based on the nature of the seasonal effect.
+ETS models are renowned for their flexibility and automatic parameter selection, typically optimizing for the lowest Akaike Information Criterion (AIC) to fit various time series patterns.
+
+**Holt-Winters Models**
+
+Components: Comprising level, trend, and seasonality, these models offer a practical approach to forecast time series data with seasonal variations.
+Level: Represents the baseline of the series, adjusting for the mean value around which the series fluctuates.
+Trend: Can be additive, showing a linear trend, or multiplicative, reflecting an exponential trend, capturing how the series evolves over time.
+Seasonality: Assimilates predictable seasonal cycles, which can again be additive or multiplicative, depending on the proportional change in seasonal effects.
+Smoothing Parameters: Alpha, beta, and gamma are key parameters that moderate the influence of the respective components on the forecast.
+Holt-Winters models are particularly advantageous for their computational efficiency and effectiveness in short to medium-range forecasting, especially when dealing with seasonal data.
+\
+\
+In this phase of our project, we focused on exploring various time series models to forecast oil prices using the imputed data. Initially, we conducted an Augmented Dickey-Fuller (ADF) test using the tseries package, which indicated that the time series is non-stationary due to a high p-value. This step was crucial to understand the nature of the time series data.
+
+We then proceeded with AutoRegressive Integrated Moving Average (ARIMA), Exponential Smoothing (ETS), and Holt-Winters models, using the forecast package. Each model was fit to the imputed time series data (imp_oil_series):
+
+1. ARIMA Model: Fit using Arima function with parameters (1,1,1), indicating the order of the ARIMA model.
+2. Exponential Smoothing (ETS) Model: Applied using ets, which selects the best fitting model based on the Akaike Information Criterion (AIC).
+3. Holt-Winters Model: Implemented using HoltWinters with a multiplicative seasonal component.
+
+In addition to fitting these models, diagnostic checks and forecasting were performed. The forecast function was used to predict future values and create diagnostic plots. The RMSE (Root Mean Square Error) for each model was calculated to evaluate their performance.
+
+```{r}
+install.packages('tseries')
+```
+
+```{r}
+library('tseries')
+adf.test(imputed_df$dcoilwtico)
+```
+\
+
+Observation : FOR ADF test H0 : time series is non-stationary. Since p-value(0.8021) > significance level (0.5) : Hence, we cannot  reject the null hypothesis. Therefore, time series is nonstationary.
+
+```{r}
+# ACF Plot
+acf(imputed_df$dcoilwtico, lag.max = NULL, type = "correlation", plot = TRUE, na.action = na.fail, demean = TRUE)
+
+# PACF Plot
+# Ensure lag.max is a numeric value representing the number of lags you want to consider.
+# For example, if you want to consider up to 20 lags, set lag.max = 20
+# If plot = TRUE is intended to plot the PACF, it should not be passed as an argument directly to pacf().
+pacf(imputed_df$dcoilwtico, lag.max = 20, na.action = na.fail)
+
+#acf(imputed_df$dcoilwtico, lag.max = NULL,type = c("correlation", "covariance", "partial"),plot = TRUE, na.action = na.fail, demean = TRUE)
+#pacf(imputed_df$dcoilwtico, lag.max, plot, na.action)
+```
+
+```{r}
+acf(imp_oil_series, main="ACF for Oil Prices")
+
+# Plot PACF
+pacf(imp_oil_series, main="PACF for Oil Prices")
+```
+
+**Models**
+plot ACF, PACF, EACF
+1.ARIMA(p,d,q)
+2.Exponential smoothing
+3. Holt-winters method
+4. SARIMAX
+RMSE
+Ljung box test******
+
+```{r}
+
+if (!require(forecast)) {
+  install.packages("forecast")
+  library(forecast)
+}
+  
+# Read the data
+oil_data <- read.csv("oil.csv")
+oil_data$date <- as.Date(oil_data$date)
+
+# Select the column with oil prices
+oil_prices <- oil_data$dcoilwtico
+
+# Impute missing values in the oil prices column
+oil_prices_imputed <- na_interpolation(oil_prices)
+
+# Convert to a univariate time series object
+ts_data <- ts(oil_prices_imputed, frequency = 365) # Adjust the frequency as appropriate
+
+start(ts_data)
+end(ts_data)
+
+# Fit ARIMA(1,1,1) model
+model <- Arima(ts_data, order=c(1,1,1))
+
+# Model summary
+summary(model)
+
+# Diagnostic plots
+checkresiduals(model)
+
+# Forecasting (optional)
+forecasts <- forecast(model, h=50)  # Forecast next 10 periods
+plot(forecasts)
+
+```
+
+```{r}
+# Fit ARIMA(1,1,1) model
+model <- Arima(imp_oil_series, order=c(1,1,1))
+
+# Look at the model summary
+summary(model)
+
+# Diagnostic plots
+checkresiduals(model)
+
+# Forecasting (optional)
+forecasts <- forecast(model, h=50)  # Forecast next 10 periods
+plot(forecasts)
+```
+\
+**Exponential Smoothing model**
+```{r}
+# Fit an Exponential Smoothing model
+ets_model <- ets(imp_oil_series)
+
+# Model summary
+summary(ets_model)
+
+# Diagnostic plots
+plot(forecast(ets_model))
+
+# Forecasting (optional)
+ets_forecasts <- forecast(ets_model, h=50)  # Forecast next 10 periods
+plot(ets_forecasts)
+
+```
+
+
+**Holt-Winters model**
+```{r}
+# Fit a Holt-Winters model
+hw_model <- HoltWinters(imp_oil_series,seasonal = "mult")
+
+# Look at the model summary
+print(hw_model)
+
+# Plotting the fitted model
+plot(hw_model)
+
+# Forecasting (optional)
+hw_forecasts <- forecast(hw_model, h=50)  # Forecast the next 10 periods
+plot(hw_forecasts)
+
+```
+
+```{r}
+start(imp_oil_series)
+end(imp_oil_series)
+```
+
+```{r}
+# Assuming you have your time series data in 'imp_oil_series'
+
+start(imp_oil_series)
+end(imp_oil_series)
+
+# Split the data into training and testing sets
+training_set <- window(imp_oil_series, end=c(4,0)) # adjust the end date as appropriate
+testing_set <- window(imp_oil_series, start=c(4,0)) # adjust the start date as appropriate
+
+# Fit the models on the training set
+arima_model <- Arima(training_set, order=c(1,1,1))
+ets_model <- ets(training_set)
+ses_model <- ses(training_set)
+hw_model <- HoltWinters(training_set,seasonal = "additive")
+sarima_model <- auto.arima(training_set)
+
+# Forecast using the models
+arima_forecast <- forecast(arima_model, h=length(testing_set))
+ets_forecast <- forecast(ets_model, h=length(testing_set))
+#ses_forecast <- forecast(ses_model, h=length(testing_set))
+hw_forecast <- forecast(hw_model, h=length(testing_set))
+sarima_forecast <- forecast(sarima_model, h=length(testing_set))
+
+# Calculate RMSE for each model
+rmse_arima <- sqrt(mean((arima_forecast$mean - testing_set)^2))
+rmse_ets <- sqrt(mean((ets_forecast$mean - testing_set)^2))
+#rmse_ses <- sqrt(mean((ses_forecast$mean - testing_set)^2))
+rmse_hw <- sqrt(mean((hw_forecast$mean - testing_set)^2))
+rmse_sarima <- sqrt(mean((sarima_forecast$mean - testing_set)^2))
+
+# Print the RMSE values
+rmse_arima
+rmse_ets
+#rmse_ses
+rmse_hw
+rmse_sarima
+
+```
+\
+
+### 6. Based on your answer to the question 4, suggest suitable model(s) for the data.
+\
+Based on the observations from question 4 regarding trends and seasonality in the oil price data, the following models are suggested for forecasting:
+
+1. ARIMA Model: Chosen for its capability to handle non-stationary data, as indicated by the ADF test. It can model the identified autoregressive nature of the series.
+
+2. ETS Model: Suitable for capturing both trend and seasonal patterns, which can be automatically identified and modeled by the ETS approach.
+
+3. SES Model: Although the data exhibits seasonality, the SES model can serve as a benchmark for more sophisticated models.
+
+4. Holt-Winters Model: Given the clear seasonality in the data, this model is appropriate for capturing both the trend and seasonal components.
+Holt-Winters is a way to model three aspects of the time series: a typical value (average), a slope (trend) over time, and a cyclical repeating pattern (seasonality)
+- Exponential smoothing is performed by Hot-winters model refers to the use of an exponentially weighted moving average (EWMA) to “smooth” a time series.
+- Three aspects of the time series behavior—value, trend, and seasonality—are expressed as three types of exponential smoothing, so Holt-Winters is called triple exponential smoothing.
+
+
+5. SARIMA Model: The auto.arima function will identify the best SARIMA model, which is particularly effective for seasonal data.
+
+6. TBATS Model: Designed for data with complex seasonality, which might be overkill for this dataset but worth exploring.
+\
+
+### 7. Run the models and check their adequacy.
+\
+we evaluated the adequacy of several forecasting models on the imputed oil series data. After splitting the data into training and testing sets, we fit ARIMA, ETS, SES, Holt-Winters, SARIMA, and TBATS models to the training data. Forecasts were then generated to match the testing set's length. The RMSE for each model was calculated to quantify forecast accuracy, with a lower RMSE indicating a more precise model. Visual plots of the forecasts were also reviewed to assess how well each model captured the underlying data patterns. The results from both the RMSE calculations and visual assessments will guide us in selecting the most suitable model for predicting future oil prices.
+\
+```{r}
+start(imp_oil_series)
+end(imp_oil_series)
+
+
+# Split the data into training and testing sets (adjust the dates as per your data range)
+training_set <- window(imp_oil_series, end=c(4,1))
+testing_set <- window(imp_oil_series, start=c(4,1))
+
+# Fit models on training set
+arima_model <- Arima(training_set, order=c(1,1,1))
+ets_model <- ets(training_set)
+ses_model <- ses(training_set,h=length(testing_set))
+hw_model <- HoltWinters(training_set)
+sarima_model <- auto.arima(training_set)
+tbats_model <- tbats(training_set)
+
+# Forecast using the models
+arima_forecast <- forecast(arima_model, h=length(testing_set))
+ets_forecast <- forecast(ets_model, h=length(testing_set))
+#ses_forecast <- forecast(ses_model, h=length(testing_set))
+ses_forecast_mean <- ses_model$mean
+hw_forecast <- forecast(hw_model, h=length(testing_set))
+sarima_forecast <- forecast(sarima_model, h=length(testing_set))
+tbats_forecast <- forecast(tbats_model, h=length(testing_set))
+
+# Calculate RMSE for each model
+rmse_arima <- sqrt(mean((arima_forecast$mean - testing_set)^2))
+rmse_ets <- sqrt(mean((ets_forecast$mean - testing_set)^2))
+rmse_ses <- sqrt(mean((ses_forecast_mean - testing_set)^2))
+rmse_hw <- sqrt(mean((hw_forecast$mean - testing_set)^2))
+rmse_sarima <- sqrt(mean((sarima_forecast$mean - testing_set)^2))
+rmse_tbats <- sqrt(mean((tbats_forecast$mean - testing_set)^2))
+
+# Print the RMSE values
+print(paste("RMSE for ARIMA(1,1,1):", rmse_arima))
+print(paste("RMSE for Exponential Smoothing:", rmse_ets))
+print(paste("RMSE for Simple Exponential Smoothing:", rmse_ses))
+print(paste("RMSE for Holt-Winters:", rmse_hw))
+print(paste("RMSE for SARIMA:", rmse_sarima))
+print(paste("RMSE for TBATS:", rmse_tbats))
+
+```
+```{r}
+plot(forecast(arima_model, h=length(testing_set)), main="ARIMA(1,1,1) Forecasts")
+plot(forecast(ets_model, h=length(testing_set)), main="ets_model")
+plot(forecast(ses_model, h=length(testing_set)), main="ses_model")
+plot(forecast(hw_model, h=length(testing_set)), main="hw_model")
+plot(forecast(sarima_model, h=length(testing_set)), main="sarima_model")
+plot(forecast(tbats_model, h=length(testing_set)), main="tbats_model")
+
+```
+\
+
+```{r}
+#ARIMA MODEL ADEQUACY CHECK
+arima_residuals <- residuals(arima_model)
+
+# Plot the Residuals
+autoplot(arima_residuals) +
+  ggtitle("ARIMA Residuals")
+
+# ACF and PACF of residuals
+Acf(arima_residuals)
+Pacf(arima_residuals)
+
+# Ljung-Box Test
+Box.test(arima_residuals, type = "Ljung-Box")
+
+# Normality Test
+shapiro.test(arima_residuals)
+
+qqnorm(arima_residuals)
+qqline(arima_residuals)
+```
+
+```{r}
+#SES MODEL ADEQUACY CHECK
+ses_residuals <- residuals(ses_model)
+
+# Plot the Residuals
+autoplot(ses_model) +
+  ggtitle("SES Residuals")
+
+# ACF and PACF of residuals
+Acf(ses_residuals)
+Pacf(ses_residuals)
+
+# Ljung-Box Test
+Box.test(ses_residuals, type = "Ljung-Box")
+
+# Normality Test
+shapiro.test(ses_residuals)
+
+qqnorm(ses_residuals)
+qqline(ses_residuals)
+```
+```{r}
+#ETS MODEL ADEQUACY CHECK
+ets_residuals <- residuals(ets_model)
+
+# Plot the Residuals
+autoplot(ets_model) +
+  ggtitle("ETS Residuals")
+
+# ACF and PACF of residuals
+Acf(ets_residuals)
+Pacf(ets_residuals)
+
+# Ljung-Box Test
+Box.test(ets_residuals, type = "Ljung-Box")
+
+# Normality Test
+shapiro.test(ets_residuals)
+
+qqnorm(ets_residuals)
+qqline(ets_residuals)
+```
+
+```{r}
+#SARIMA MODEL ADEQUACY CHECK
+sarima_residuals <- residuals(sarima_model)
+
+# Plot the Residuals
+autoplot(sarima_model) +
+  ggtitle("sarima Residuals")
+
+# ACF and PACF of residuals
+Acf(sarima_residuals)
+Pacf(sarima_residuals)
+
+# Ljung-Box Test
+Box.test(sarima_residuals, type = "Ljung-Box")
+
+# Normality Test
+shapiro.test(sarima_residuals)
+
+qqnorm(sarima_residuals)
+qqline(sarima_residuals)
+```
+
+```{r}
+#holt winters MODEL ADEQUACY CHECK
+hw_residuals <- residuals(hw_model)
+
+# Plot the Residuals
+autoplot(ets_model) +ggtitle("holt winters Residuals")
+
+# ACF and PACF of residuals
+Acf(hw_residuals)
+Pacf(hw_residuals)
+# Ljung-Box Test
+Box.test(hw_residuals, type = "Ljung-Box")
+# Normality Test
+shapiro.test(hw_residuals)
+qqnorm(hw_residuals)
+qqline(hw_residuals)
+```
+
+
+#Observation on Model adequacy based on residual plots:
+
+- We performed rigorous check on residuals to determine model adequacy. Here, we used PACF, ACF, QQplot to determine if residuals are normally distributed(normality check) and Ljung box test.
+
+- Based on Ljung box test : p-value obtained is greater than significance level(0.05) that means we fail to reject H0: no autocorrelations between the residuals.
+
+
+
+
+
+### 8. Comparing the models
+\
+In our comparative analysis of forecasting models for oil price data, the following observations were made:
+
+1. ARIMA(1,1,1) Model: Exhibited the lowest RMSE at 2.4603, indicating the highest accuracy and the best fit to the historical data among all models tested.
+
+2. Exponential Smoothing and SES Models: Both demonstrated very close RMSE values (2.4612), suggesting they are nearly as accurate as the ARIMA model in fitting the time series data.
+
+3. Holt-Winters Model: Presented a significantly higher RMSE of 11.0799, which suggests a relatively poor fit to the data compared to the other models.
+
+4. SARIMA Model: Had a slightly higher RMSE than ARIMA at 2.4695, making it a less precise model in this specific instance.
+
+5. TBATS Model: Also showed an RMSE of 2.4612, comparable to the Exponential Smoothing and SES models, but did not surpass the ARIMA model's performance.
+\
+
+
+
+
+
+
+
+*********************************************-----------------------------------------------------***************************
+*****************************************************************************************************************************
+
+
+
+**Final Selection** 
+\
+The ARIMA(1,1,1) model is deemed the most appropriate for forecasting the oil prices due to its lowest RMSE, indicating the most accurate and reliable predictions.
+\
+
+## Overall summary of the project
+\
+Throughout our project, we have conducted a comprehensive time series analysis of oil prices using a Kaggle dataset. Here’s a summary of our key activities and findings:
+
+1.	Data Preparation:
+Accessed oil price data and loaded it into R, ensuring the 'date' column was correctly formatted. Identified and located missing data within the dataset.
+
+2.	Initial Visualization:
+- Plotted the raw time series data to examine the overall structure and pattern of oil prices.
+- Based on time series decomposition, we found that there is seasonality component in the time-series.
+- Also, we performed ADF test to check if the time-series is stationary(constant mean and autocorrelation being const for lag k)
+     -- Here we found that time-series is non-stationary. Hence, we need to use some method to make it stationary. Therefore, we used differencing to make timeseries stationary. We used first order differencing to make time-series stationary and hence d=1 in ARIMA and SARIMA model.
+
+3.	Data Imputation:
+Utilized the moving average method from the imputeTS package to fill in missing data. Re-plotted the time series with imputed data, noting the presence of seasonality.
+
+4.	Model Exploration:
+Studied ETS and Holt-Winters models theoretically to understand their suitability for capturing trends and seasonality. Conducted ADF tests to confirm the non-stationary nature of the series.
+
+5.	Model Selection:
+Based on observed seasonality and non-stationarity, we selected several models for evaluation: ARIMA, ETS, SES, Holt-Winters, SARIMA, and TBATS.
+
+6.	Model Fitting and Evaluation:
+Split the data into training and testing sets to validate our models' predictive performance. Fitted each model to the training set and forecasted values for the testing set period.
+
+7.	Performance Comparison:
+Calculated RMSE for each model, which is a standard metric for assessing forecasting accuracy. Determined that the ARIMA(1,1,1) model had the lowest RMSE, indicating the highest level of precision among the models tested.
+
+8.	Final Selection:
+Based on RMSE and visual assessment of the forecast plots, the ARIMA(1,1,1) model was chosen for its superior performance in forecasting oil prices.
+Throughout this project, we’ve made extensive use of R for statistical computing, leveraging various packages and functions for time series analysis. Our methodical approach to model selection and evaluation has enabled us to identify a robust model for forecasting oil prices, with the potential to aid in making informed decisions in related economic sectors.
